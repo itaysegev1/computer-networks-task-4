@@ -54,6 +54,8 @@ unsigned short checksum(void *b, int len) {
 }
 
 void displayipv4(void *buf, int bytes) {
+    printf("-----ipv4------\n");
+    printf((const char*)bytes);
     int i;
     struct iphdr *ip = (struct iphdr *) buf;
     struct icmphdr *icmp = (struct icmphdr *) (buf + ip->ihl * 4);
@@ -77,6 +79,8 @@ void displayipv4(void *buf, int bytes) {
 }
 
 void displayipv6(void *buf, int bytes) {
+    printf("-----ipv6------\n");
+    printf((const char*)bytes);
     int i;
     struct ip6_hdr *ip = (struct ipv6hdr *) buf;
     struct icmphdr *icmp = (struct icmphdr *) (buf + sizeof(struct ip6_hdr));
@@ -100,6 +104,7 @@ void displayipv6(void *buf, int bytes) {
 }
 
 void display(void *buf, int bytes) {
+    printf("-------------- display -----------\n");
     if (ip_v == 4) {
         displayipv4(buf, bytes);
     }
@@ -128,6 +133,8 @@ void listener(void)
 
         bzero(buf, sizeof(buf));
         bytes = recvfrom(sd, buf, sizeof(buf), 0, (struct sockaddr*)&addr, &len);
+        if (bytes < 0)
+            perror("recvfrom failed");
         if ( bytes > 0 )
             display(buf, bytes);
         else
@@ -138,6 +145,10 @@ void listener(void)
 }
 
 void ping(struct  sockaddr_in *addr) {
+    if (!proto) {
+        perror("ICMP protocol not found");
+        exit(0);
+    }
     int i,j,sd,cnt=1;
     struct packet pckt;
     struct sockaddr_in r_addr;
@@ -198,14 +209,16 @@ int main(int argc, char *argv[]) {
             sleepTime=0;
         }
         if (strcmp(argv[i],"-t") == 0) {
-            if (strcmp(argv[i+1],"4") != 0) {
+            if (strcmp(argv[i+1],"4") == 0) {
                 ip_v=4;
-            }if (strcmp(argv[i+1],"6") != 0) {
-                ip_v=6;
-            }
-            else {
-                perror("unknown ip version");
-                return -1;
+            }else {
+                if (strcmp(argv[i+1],"6") == 0) {
+                    ip_v=6;
+                }
+                else {
+                    perror("unknown ip version");
+                    return -1;
+                }
             }
         }
     }
@@ -217,9 +230,11 @@ int main(int argc, char *argv[]) {
         addr.sin_port=0;
         memcpy((char *)&addr.sin_addr.s_addr,hname->h_addr_list[0],hname->h_length);
         if (fork()==0) {
+            printf("listener");
             listener();
         }
         else {
+            printf("ping");
             ping(&addr);
         }
         wait(0);
